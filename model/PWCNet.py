@@ -5,7 +5,7 @@ import numpy as np
 from torch.autograd import Variable
 from torchsummary import summary
 os.environ['PYTHON_EGG_CACHE'] = 'tmp/' # a writable directory
-import correlation_package.correlation as C
+from .correlation_package.correlation import Correlation
 # from .correlation_package.correlation import Correlation
 
 
@@ -13,7 +13,6 @@ import correlation_package.correlation as C
 class PWCNet(nn.Module):
     def __init__(self):
         super().__init__()
-        print("Starting pwcnet")
         # Maximum displacement for correlation
         max_disp = 4
 
@@ -25,7 +24,7 @@ class PWCNet(nn.Module):
         self.fe_block5 = self.fe_conv_block(96, 128)
         self.fe_block6 = self.fe_conv_block(128, 196)
 
-        self.corr = C.Correlation(pad_size=max_disp, kernel_size=1, max_displacement=max_disp, stride1=1, stride2=1, corr_multiply=1)
+        self.corr = Correlation(pad_size=max_disp, kernel_size=1, max_displacement=max_disp, stride1=1, stride2=1, corr_multiply=1)
         self.leakyReLU = nn.LeakyReLU(0.1)
 
         # self.corr = self.corr_block(max_disp)
@@ -201,11 +200,8 @@ class PWCNet(nn.Module):
         return output*mask
     
     def forward(self, x):
-        print("PWCNet forward")
         im1 = x[:,:3,:,:]
-        print("SHAPE 1: {}".format(im1.size()))
         im2 = x[:,3:,:,:]
-        print("SHAPE 2: {}".format(im2.size()))
 
         fe1_im1 = self.fe_block1(im1)
         fe1_im2 = self.fe_block1(im2)
@@ -315,11 +311,12 @@ class PWCNet(nn.Module):
         y = self.context_conv6(y)
         y = flow2 + self.context_conv7(y)
 
-        if self.training:
-            return y, flow3, flow4, flow5, flow6
-        else:
-            return y
+        # if self.training:
+        #     return y, flow3, flow4, flow5, flow6
+        # else:
+        #     return y
         
+        return y, flow3, flow4, flow5, flow6
     
 
 
