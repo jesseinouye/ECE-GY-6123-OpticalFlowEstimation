@@ -4,10 +4,8 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 from torchsummary import summary
-os.environ['PYTHON_EGG_CACHE'] = 'tmp/' # a writable directory
+os.environ['PYTHON_EGG_CACHE'] = 'tmp/'
 from .correlation_package.correlation import Correlation
-# from .correlation_package.correlation import Correlation
-
 
 
 class PWCNet(nn.Module):
@@ -27,14 +25,10 @@ class PWCNet(nn.Module):
         self.corr = Correlation(pad_size=max_disp, kernel_size=1, max_displacement=max_disp, stride1=1, stride2=1, corr_multiply=1)
         self.leakyReLU = nn.LeakyReLU(0.1)
 
-        # self.corr = self.corr_block(max_disp)
-
         nd = (2*max_disp+1)**2
         dims = np.cumsum([128, 128, 96, 64, 32])
 
         in_dim = nd
-        # self.ofe_block6 = self.ofe_block(in_dim)
-        # self.ofe_block6 = self.build_ofe_conv(in_dim)
         self.pred_flow6 = nn.Conv2d(in_dim+dims[4], 2, kernel_size=3, stride=1, padding=1, bias=True)
         self.up_feat6 = nn.ConvTranspose2d(in_dim+dims[4], 2, kernel_size=4, stride=2, padding=1)
 
@@ -45,7 +39,6 @@ class PWCNet(nn.Module):
         self.ofe_block6_4 = self.conv_block(in_dim+dims[3], 32, kernel_size=3, stride=1)
 
         in_dim = nd+128+4
-        # self.ofe_block5 = self.ofe_block(in_dim)
         self.pred_flow5 = nn.Conv2d(in_dim+dims[4], 2, kernel_size=3, stride=1, padding=1, bias=True)
         self.up_feat5 = nn.ConvTranspose2d(in_dim+dims[4], 2, kernel_size=4, stride=2, padding=1)
 
@@ -56,7 +49,6 @@ class PWCNet(nn.Module):
         self.ofe_block5_4 = self.conv_block(in_dim+dims[3], 32, kernel_size=3, stride=1)
 
         in_dim = nd+96+4
-        # self.ofe_block4 = self.ofe_block(in_dim)
         self.pred_flow4 = nn.Conv2d(in_dim+dims[4], 2, kernel_size=3, stride=1, padding=1, bias=True)
         self.up_feat4 = nn.ConvTranspose2d(in_dim+dims[4], 2, kernel_size=4, stride=2, padding=1)
 
@@ -67,7 +59,6 @@ class PWCNet(nn.Module):
         self.ofe_block4_4 = self.conv_block(in_dim+dims[3], 32, kernel_size=3, stride=1)
 
         in_dim = nd+64+4
-        # self.ofe_block3 = self.ofe_block(in_dim)
         self.pred_flow3 = nn.Conv2d(in_dim+dims[4], 2, kernel_size=3, stride=1, padding=1, bias=True)
         self.up_feat3 = nn.ConvTranspose2d(in_dim+dims[4], 2, kernel_size=4, stride=2, padding=1)
 
@@ -78,7 +69,6 @@ class PWCNet(nn.Module):
         self.ofe_block3_4 = self.conv_block(in_dim+dims[3], 32, kernel_size=3, stride=1)
 
         in_dim = nd+32+4
-        # self.ofe_block2 = self.ofe_block(in_dim)
         self.pred_flow2 = nn.Conv2d(in_dim+dims[4], 2, kernel_size=3, stride=1, padding=1, bias=True)
         
         self.ofe_block2_0 = self.conv_block(in_dim, 128, kernel_size=3, stride=1)
@@ -103,13 +93,6 @@ class PWCNet(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-    # def corr_block(self, max_disp):
-    #     block = nn.Sequential(
-    #         Correlation(pad_size=max_disp, kernel_size=1, max_displacement=max_disp, stride1=1, stride2=2, corr_multiply=1),
-    #         nn.LeakyReLU(0.1)
-    #     )
-    #     return block
-
 
     def conv_block(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1):
         block = nn.Sequential(
@@ -117,6 +100,7 @@ class PWCNet(nn.Module):
             nn.LeakyReLU(0.1)
         )
         return block
+
 
     # Build feature extraction block
     def fe_conv_block(self, in_channels, out_channels):
@@ -129,6 +113,7 @@ class PWCNet(nn.Module):
             nn.LeakyReLU(0.1),
         )
         return block
+
 
     def ofe_block(self, input_dim):
         dims = np.cumsum([128, 128, 96, 64, 32])
@@ -147,20 +132,9 @@ class PWCNet(nn.Module):
         )
         return block
 
-    def build_ofe_conv(self, input_dim):
-        dims = [0, 128, 128, 96, 64, 32]
-        convs = []
-        for i in range(len(dims)-1):
-            block = nn.Sequential(
-                nn.Conv2d(input_dim + dims[i], dims[i+1], kernel_size=3, stride=1, padding=1, dilation=1),
-                nn.ReLU(0.1)
-            )
-            convs.append(block)
 
-        return convs
-
-
-    # NOTE: copied from original PWCNet implementation
+    # Warp code from original PWC-Net implementation
+    # https://github.com/NVlabs/PWC-Net
     def warp(self, x, flo):
         """
         warp an image/tensor (im2) back to im1, according to the optical flow
@@ -189,15 +163,12 @@ class PWCNet(nn.Module):
         output = nn.functional.grid_sample(x, vgrid)
         mask = torch.autograd.Variable(torch.ones(x.size())).cuda()
         mask = nn.functional.grid_sample(mask, vgrid)
-
-        # if W==128:
-            # np.save('mask.npy', mask.cpu().data.numpy())
-            # np.save('warp.npy', output.cpu().data.numpy())
         
         mask[mask<0.9999] = 0
         mask[mask>0] = 1
         
         return output*mask
+    
     
     def forward(self, x):
         im1 = x[:,:3,:,:]
@@ -218,7 +189,6 @@ class PWCNet(nn.Module):
 
         corr6 = self.corr(fe6_im1, fe6_im2)
         corr6 = self.leakyReLU(corr6)
-        # x1 = self.ofe_block6[0](corr6)
         x1 = self.ofe_block6_0(corr6)
         x1 = torch.cat((x1, corr6), 1)
         x2 = self.ofe_block6_1(x1)
@@ -310,11 +280,6 @@ class PWCNet(nn.Module):
         y = self.context_conv5(y)
         y = self.context_conv6(y)
         y = flow2 + self.context_conv7(y)
-
-        # if self.training:
-        #     return y, flow3, flow4, flow5, flow6
-        # else:
-        #     return y
         
         return y, flow3, flow4, flow5, flow6
     
